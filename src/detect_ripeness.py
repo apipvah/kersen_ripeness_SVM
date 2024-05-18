@@ -22,11 +22,15 @@ upper_green = np.array([86, 255, 255])
 # digunakan untuk memproses gambar sebelum dilakukan klasifikasi
 def preprocess(img):
     resizeGambar = cv2.resize(img, (400, 500))
+    # cv2.imshow('resize gambar', resizeGambar)
     cropGambar = resizeGambar[120:450, 50:370]
+    # cv2.imshow('crop gambar', cropGambar)
     contrast = 1.3
     brightness = 15
     gambar = cv2.addWeighted(cropGambar, contrast, cropGambar, 0, brightness)
+    # cv2.imshow('penajaman gambar', gambar)
     bilateral = cv2.bilateralFilter(gambar, 9, 75, 75)
+    # cv2.imshow('smoothing gambar', bilateral)
     return bilateral
 
 # diubah ke bentuk warna HSV dan masking
@@ -50,6 +54,7 @@ def hitungPersentaseWarna(mask):
 def ekstraksiFitur(gambar):
     img = preprocess(gambar)
     mask_red, mask_green = toHSV(img)
+    # gambarHasil = cv2.bitwise_and(img, img, mask = mask_green)
     persentase_merah = hitungPersentaseWarna(mask_red)
     persentase_hijau = hitungPersentaseWarna(mask_green)
     return persentase_merah, persentase_hijau, img, mask_red, mask_green
@@ -130,7 +135,7 @@ def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_
     label_persentase.config(text=f"Persentase Merah: {persentase_merah:.2f}%\nPersentase Hijau: {persentase_hijau:.2f}%")
 
 def prosesGambar():
-    file_path = 'ceri_merah3.jpeg'
+    file_path = 'mentah_uji_1.jpeg'
     if not os.path.exists(file_path):
         messagebox.showerror("Error", "Gambar tidak ditemukan!")
         return
