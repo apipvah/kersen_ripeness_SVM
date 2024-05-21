@@ -76,7 +76,7 @@ def ekstraksiFitur(gambar):
 def klasifikasiKematangan(gambar):
     persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = ekstraksiFitur(gambar)
     persentase_warna_array = np.array([persentase_merah]).reshape(1, -1)
-    # print(persentase_warna_array)
+    # print("persentase warna array:", persentase_warna_array)
     hasil_prediksi = model.predict(persentase_warna_array)
     if persentase_hijau > persentase_merah:
         hasil = "Belum Matang"
@@ -107,8 +107,9 @@ direktori_dataset = 'dataset'
 gambar, label = muatDataset(direktori_dataset)
 fitur = np.array([ekstraksiFitur(img)[0] for img in gambar])
 fitur = fitur.reshape(-1, 1)
+print(fitur)
 label = np.array(label)
-X_train, X_test, y_train, y_test = train_test_split(fitur, label, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(fitur, label, test_size=0.5, random_state=42)
 model = svm.SVC(kernel='linear')
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
@@ -136,7 +137,7 @@ def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_
     panel_processed.config(image=img_processed_tk)
     panel_processed.image = img_processed_tk
 
-    # Determine which mask to display
+    # Determine which mask to display 
     if persentase_merah > persentase_hijau:
         img_mask_rgb = cv2.cvtColor(mask_red, cv2.COLOR_GRAY2RGB)
     else:
@@ -153,7 +154,7 @@ def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_
 
 
 def prosesGambar():
-    file_path = 'kersen_merah.jpeg'
+    file_path = 'uji_5.jpeg'
     if not os.path.exists(file_path):
         messagebox.showerror("Error", "Gambar tidak ditemukan!")
         return
