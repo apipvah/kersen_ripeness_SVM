@@ -13,18 +13,18 @@ from PIL import Image, ImageTk
 # digunakan untuk memproses gambar sebelum dilakukan klasifikasi
 def preprocess(img):
     resizeGambar = cv2.resize(img, (400, 500))
-    # cv2.imshow('resize gambar', resizeGambar)
+    cv2.imshow('resize gambar', resizeGambar)
 
     cropGambar = resizeGambar[120:450, 50:370]
-    # cv2.imshow('crop gambar', cropGambar)
+    cv2.imshow('crop gambar', cropGambar)
     
     contrast = 1.3
     brightness = 15
     gambar = cv2.addWeighted(cropGambar, contrast, cropGambar, 0, brightness)
-    # cv2.imshow('penajaman gambar', gambar)
+    cv2.imshow('penajaman gambar', gambar)
     
     bilateral = cv2.bilateralFilter(gambar, 9, 75, 75)
-    # cv2.imshow('smoothing gambar', bilateral)
+    cv2.imshow('smoothing gambar', bilateral)
     
     return bilateral
 
@@ -44,7 +44,7 @@ upper_green = np.array([86, 255, 255])
 # diubah ke bentuk warna HSV dan masking
 def toHSV(img):
     hsvGambar = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # cv2.imshow('hsv', hsvGambar) 
+    cv2.imshow('hsv', hsvGambar) 
     mask_red1 = cv2.inRange(hsvGambar, lower_red_1, upper_red_1)
     mask_red2 = cv2.inRange(hsvGambar, lower_red_2, upper_red_2)
     mask_red = mask_red1 | mask_red2
@@ -64,7 +64,7 @@ def ekstraksiFitur(gambar):
     img = preprocess(gambar)
     mask_red, mask_green = toHSV(img)
     gambarHasil = cv2.bitwise_and(img, img, mask = mask_red)
-    # cv2.imshow('mask', gambarHasil)
+    cv2.imshow('mask', gambarHasil)
     persentase_merah = hitungPersentaseWarna(mask_red)
     persentase_hijau = hitungPersentaseWarna(mask_green)
     return persentase_merah, persentase_hijau, img, mask_red, mask_green
@@ -109,6 +109,7 @@ fitur = np.array([ekstraksiFitur(img)[0] for img in gambar])
 fitur = fitur.reshape(-1, 1)
 print(fitur)
 label = np.array(label)
+print(label)
 X_train, X_test, y_train, y_test = train_test_split(fitur, label, test_size=0.5, random_state=42)
 model = svm.SVC(kernel='linear')
 model.fit(X_train, y_train)
