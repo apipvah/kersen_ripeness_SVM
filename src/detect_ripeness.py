@@ -9,33 +9,42 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 
-# Batas bawah dan atas untuk warna merah dalam ruang warna HSV
+# ---------------------------- PRE-PROCESSING ----------------------------
+# digunakan untuk memproses gambar sebelum dilakukan klasifikasi
+def preprocess(img):
+    resizeGambar = cv2.resize(img, (400, 500))
+    # cv2.imshow('resize gambar', resizeGambar)
+
+    cropGambar = resizeGambar[120:450, 50:370]
+    # cv2.imshow('crop gambar', cropGambar)
+    
+    contrast = 1.3
+    brightness = 15
+    gambar = cv2.addWeighted(cropGambar, contrast, cropGambar, 0, brightness)
+    # cv2.imshow('penajaman gambar', gambar)
+    
+    bilateral = cv2.bilateralFilter(gambar, 9, 75, 75)
+    # cv2.imshow('smoothing gambar', bilateral)
+    
+    return bilateral
+
+
+# ---------------------------- SEGMENTASI ----------------------------
+
+# Batas bawah dan atas untuk warna merah dalam ruang warna HSV untuk segmentasi
 lower_red_1 = np.array([0, 120, 70])
 upper_red_1 = np.array([10, 255, 255])
 lower_red_2 = np.array([170, 120, 70])
 upper_red_2 = np.array([180, 255, 255])
 
-# Batas bawah dan atas untuk warna hijau dalam ruang warna HSV
+# Batas bawah dan atas untuk warna hijau dalam ruang warna HSV untuk segmentasi
 lower_green = np.array([36, 100, 100])
 upper_green = np.array([86, 255, 255])
-
-# digunakan untuk memproses gambar sebelum dilakukan klasifikasi
-def preprocess(img):
-    resizeGambar = cv2.resize(img, (400, 500))
-    # cv2.imshow('resize gambar', resizeGambar)
-    cropGambar = resizeGambar[120:450, 50:370]
-    # cv2.imshow('crop gambar', cropGambar)
-    contrast = 1.3
-    brightness = 15
-    gambar = cv2.addWeighted(cropGambar, contrast, cropGambar, 0, brightness)
-    # cv2.imshow('penajaman gambar', gambar)
-    bilateral = cv2.bilateralFilter(gambar, 9, 75, 75)
-    # cv2.imshow('smoothing gambar', bilateral)
-    return bilateral
 
 # diubah ke bentuk warna HSV dan masking
 def toHSV(img):
     hsvGambar = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # cv2.imshow('hsv', hsvGambar) 
     mask_red1 = cv2.inRange(hsvGambar, lower_red_1, upper_red_1)
     mask_red2 = cv2.inRange(hsvGambar, lower_red_2, upper_red_2)
     mask_red = mask_red1 | mask_red2
@@ -50,14 +59,31 @@ def hitungPersentaseWarna(mask):
     return persentase_warna
 
 # Fungsi ini menggabungkan semua langkah sebelumnya: preprocessing gambar, konversi ke HSV dan masking,
-# serta menghitung persentase warna merah dan hijau. Fungsi ini mengembalikan persentase warna merah dan hijau, gambar yang udah di proses, dan masking.
+# serta menghitung persentase warna merah dan hijau
 def ekstraksiFitur(gambar):
     img = preprocess(gambar)
     mask_red, mask_green = toHSV(img)
-    # gambarHasil = cv2.bitwise_and(img, img, mask = mask_green)
+    gambarHasil = cv2.bitwise_and(img, img, mask = mask_red)
+    # cv2.imshow('mask', gambarHasil)
     persentase_merah = hitungPersentaseWarna(mask_red)
     persentase_hijau = hitungPersentaseWarna(mask_green)
     return persentase_merah, persentase_hijau, img, mask_red, mask_green
+
+
+# ---------------------------- KLASIFIKASI ----------------------------
+
+# menentukan kematangan berdasarkan persentase warna
+def klasifikasiKematangan(gambar):
+    persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = ekstraksiFitur(gambar)
+    persentase_warna_array = np.array([persentase_merah]).reshape(1, -1)
+    # print(persentase_warna_array)
+    hasil_prediksi = model.predict(persentase_warna_array)
+    if persentase_hijau > persentase_merah:
+        hasil = "Belum Matang"
+    else:
+        hasil = "Matang" if hasil_prediksi[0] == 1 else "Belum Matang"
+    return hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green
+
 
 # Fungsi ini memuat dataset dari direktori yang diberikan, mengonversi gambar ke
 # format BGR yang digunakan oleh OpenCV, dan menetapkan label berdasarkan kelas ('matang' atau 'belum_matang')
@@ -89,16 +115,7 @@ y_pred = model.predict(X_test)
 print(classification_report(y_test, y_pred))
 print(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
 
-def klasifikasiKematangan(gambar):
-    persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = ekstraksiFitur(gambar)
-    persentase_warna_array = np.array([persentase_merah]).reshape(1, -1)
-    hasil_prediksi = model.predict(persentase_warna_array)
-    if persentase_hijau > persentase_merah:
-        hasil = "Belum Matang"
-    else:
-        hasil = "Matang" if hasil_prediksi[0] == 1 else "Belum Matang"
-    return hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green
-
+# ---------------------------- MENAMPILKAN HASIL ----------------------------
 def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green):
     img_rgb = cv2.cvtColor(gambar, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img_rgb)
@@ -134,8 +151,9 @@ def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_
     label_hasil.config(text=f"Kematangan: {hasil}")
     label_persentase.config(text=f"Persentase Merah: {persentase_merah:.2f}%\nPersentase Hijau: {persentase_hijau:.2f}%")
 
+
 def prosesGambar():
-    file_path = 'mentah_uji_1.jpeg'
+    file_path = 'kersen_merah.jpeg'
     if not os.path.exists(file_path):
         messagebox.showerror("Error", "Gambar tidak ditemukan!")
         return
@@ -148,6 +166,8 @@ def prosesGambar():
     hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = klasifikasiKematangan(gambar)
     tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green)
 
+
+# ---------------------------- GUI MENGGUNAKAN TKINTER ----------------------------
 root = tk.Tk()
 root.title("Klasifikasi Kematangan Buah Kersen")
 root.geometry("800x400")
@@ -171,6 +191,8 @@ label_hasil.pack(padx=10, pady=10, side="bottom", fill="both", expand=True)
 label_persentase = tk.Label(root, text="", font=("Helvetica", 16))
 label_persentase.pack(padx=10, pady=10, side="bottom", fill="both", expand=True)
 
+
+# ---------------------------- JALANKAN PROGRAM ----------------------------
 prosesGambar()
 
 root.mainloop()
