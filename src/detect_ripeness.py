@@ -9,6 +9,23 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 
+def prosesGambar():
+    file_path = 'uji_mentah_2.jpeg'
+    if not os.path.exists(file_path):
+        messagebox.showerror("Error", "Gambar tidak ditemukan!")
+        return
+
+    gambar = cv2.imread(file_path)
+    # cv2.imshow("gambar asli", gambar)
+    # cv2.waitKey(0)
+    if gambar is None:
+        messagebox.showerror("Error", "Gagal membaca gambar!")
+        return
+
+    hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = klasifikasiKematangan(gambar)
+    tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green)
+
+
 # ---------------------------- PRE-PROCESSING ----------------------------
 # digunakan untuk memproses gambar sebelum dilakukan klasifikasi
 def preprocess(img):
@@ -63,8 +80,8 @@ def hitungPersentaseWarna(mask):
 def ekstraksiFitur(gambar):
     img = preprocess(gambar)
     mask_red, mask_green = toHSV(img)
-    gambarHasil = cv2.bitwise_and(img, img, mask = mask_red)
-    cv2.imshow('mask', gambarHasil)
+    # gambarHasil = cv2.bitwise_and(img, img, mask = mask_red)
+    # cv2.imshow('mask', gambarHasil)
     persentase_merah = hitungPersentaseWarna(mask_red)
     persentase_hijau = hitungPersentaseWarna(mask_green)
     return persentase_merah, persentase_hijau, img, mask_red, mask_green
@@ -76,7 +93,7 @@ def ekstraksiFitur(gambar):
 def klasifikasiKematangan(gambar):
     persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = ekstraksiFitur(gambar)
     persentase_warna_array = np.array([persentase_merah]).reshape(1, -1)
-    # print("persentase warna array:", persentase_warna_array)
+    print("persentase warna array:", persentase_warna_array)
     hasil_prediksi = model.predict(persentase_warna_array)
     if persentase_hijau > persentase_merah:
         hasil = "Belum Matang"
@@ -107,9 +124,9 @@ direktori_dataset = 'dataset'
 gambar, label = muatDataset(direktori_dataset)
 fitur = np.array([ekstraksiFitur(img)[0] for img in gambar])
 fitur = fitur.reshape(-1, 1)
-print(fitur)
+# print(fitur)
 label = np.array(label)
-print(label)
+# print(label)
 X_train, X_test, y_train, y_test = train_test_split(fitur, label, test_size=0.5, random_state=42)
 model = svm.SVC(kernel='linear')
 model.fit(X_train, y_train)
@@ -153,20 +170,6 @@ def tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_
     label_hasil.config(text=f"Kematangan: {hasil}")
     label_persentase.config(text=f"Persentase Merah: {persentase_merah:.2f}%\nPersentase Hijau: {persentase_hijau:.2f}%")
 
-
-def prosesGambar():
-    file_path = 'uji_5.jpeg'
-    if not os.path.exists(file_path):
-        messagebox.showerror("Error", "Gambar tidak ditemukan!")
-        return
-
-    gambar = cv2.imread(file_path)
-    if gambar is None:
-        messagebox.showerror("Error", "Gagal membaca gambar!")
-        return
-
-    hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green = klasifikasiKematangan(gambar)
-    tampilkanHasil(gambar, hasil, persentase_merah, persentase_hijau, processed_img, mask_red, mask_green)
 
 
 # ---------------------------- GUI MENGGUNAKAN TKINTER ----------------------------
